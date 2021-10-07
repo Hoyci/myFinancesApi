@@ -1,59 +1,56 @@
 const UserRepository = require('../repositories/UserRepository')
+const bcrypt = require('bcryptjs')
+
+function getDate() {
+    const date = new Date()
+    return date
+}
 
 class UserController {
 
-    index(request, response) {
-        const users = UserRepository.findAll();
+    async index(request, response) {
+        const users = await UserRepository.findAll();
         response.json(users)
     }
 
-    show(request, response){
-        const { username } = request.params;
-        const user = UserRepository.findByUsername(username)
-        if (!user) {
-            return response.status(404).json({ error : "User not found"})
-        }
+    async show(request, response) {
+        const { nome } = request.params;
+        const user = await UserRepository.findByUsername(nome)
         response.json(user)
     }
 
-    store(request, response){
-        const { name, username, phoneNumber } = request.body
-        const verify = UserRepository.findByUsername(username)
-        if (verify){
-            return response.status(404).json({ error : "Username is already in use"})
-        }
-        const newUser = UserRepository.create(name, username, phoneNumber)
+    async store(request, response) {
+        const { username, password, email } = request.body
+        const passwordCryp = bcrypt.hashSync(password, 10)
+        const newUser = await UserRepository.create(username, passwordCryp, email, getDate());
         response.json(newUser)
     }
 
-    update(request, response){
+    /* Como posso usar essa função para atualizar somente um campo de um usuário e manter os outros? */
+    /* É viável criar outras funções no UserRepository de update para campos especificos? */
+    /* Ou é viável criar uma rota para atualizar senha, outra para atualizar usuário e outra para atualizar email? */
+    async update(request, response) {
         const { id } = request.params;
-        const { name, username, phoneNumber } = request.body;
-        const verify = UserRepository.findById(id);
-        if (!verify){
-            return response.status(404).json({ error : "User not found"})
-        };
-        if (name == '' || name == undefined){
-            return response.status(404).json({ error : "Name cannot be empty"})
-        };
-        if (username == '' || username == undefined){
-            return response.status(404).json({ error : "Username cannot be empty"})
-        };
-        if (phoneNumber == '' || phoneNumber == undefined){
-            const updateUser = UserRepository.updateNoPhoneNumber(id, name, username)
-            return response.json(updateUser)
-        };
-        const updateUser = UserRepository.update(id, name, username, phoneNumber);
-        response.json(updateUser);
+        let body = request.body;
+/*         const { username, password, email } = request.body; */
+        for (let info in body){
+            console.log(info)
+            console.log(typeof(request.body[info]))
+            if (info == 'password'){
+                const passwordCryp = bcrypt.hashSync(body[info], 10)
+                const updateUser = await UserRepository.update(id, info, passwordCryp)
+                response.json(updateUser)
+            }
+            const updateUser = await UserRepository.update(id, info, request.body[info])
+            response.json(updateUser)
+        }
+        /* const passwordCryp = bcrypt.hashSync(password, 10)
+        const updateUser = await UserRepository.update(id, username, passwordCryp, email, getDate());
+        response.json(updateUser) */
     }
 
-    delete(request, response){
+    async delete(request, response) {
         const { id } = request.params;
-        const user = UserRepository.findById(id)
-        if (!user){
-            return response.status(404).json({error : "User not found"})
-        }
-
         UserRepository.deleteUser(id)
         response.sendStatus(204)
     }

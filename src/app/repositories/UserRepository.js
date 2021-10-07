@@ -1,58 +1,49 @@
-const { v4 : uuid } = require('uuid');
-
-
-let users = [
-    {
-        "id": uuid(),
-        "name": "Ruan Pablo",
-        "username": "hoyci",
-        "phoneNumber" : "5521996278972"
-    },
-    {
-        "id": uuid(),
-        "name": "Marcelo Figueiredo",
-        "username": "hydenz",
-        "phoneNumber" : "5521999669966"
-    },
-];
+const db = require('../../database/index')
 
 class UserRepository {
 
-    findAll(){
-        return users
+    async findAll(){
+        const rows = await db.query('SELECT id, username, email FROM users');
+        return rows
     }
 
-
-    findById(id){
-        const user = users.find(el => el.id == id)
-        return user
+    async findById(id){
+        const [row] = await db.query('SELECT * FROM users WHERE id = $1', [id]);
+        return row
     }
 
-    findByUsername(username){
-        const user = users.find(el => el.username == username)
-        return user
+    async findByUsername(username){
+        const [row] = await db.query('SELECT * FROM users WHERE username = $1', [username]);
+        return row
     }
 
-    create(name, username, phoneNumber){
-        const newUser = {"id": uuid(), name, username, phoneNumber}
-        users.push(newUser)
-        return newUser
+    async findByEmail(email){
+        const [row] = await db.query('SELECT * FROM users WHERE email = $1', [email]);
+        return row
     }
 
-    update(id, name, username, phoneNumber){
-        const updateUser = users.find(el => el.id == id)
-        Object.assign(updateUser, {name, username, phoneNumber})
-        return updateUser
+    async create(username, password, email, created){
+        const [row] = await db.query(`
+        INSERT INTO users (username, password, email, created_on)
+        VALUES ($1, $2, $3, $4)
+        RETURNING id, username, email
+        `, [username, password, email, created]);
+        return row
     }
 
-    updateNoPhoneNumber(id, name, username){
-        const updateUser = users.find(el => el.id == id)
-        Object.assign(updateUser, {name, username})
-        return updateUser
+    async update(id, place, info){
+        const [row] = await db.query(`
+        UPDATE users
+        SET ${place} = $3
+        WHERE ID = $1
+        RETURNING id, username, email
+        `, [id, info])
+        return row
     }
 
-    deleteUser(id){
-        users = users.filter(el => el.id !== id);
+    async deleteUser(id){
+        const deleteOp = await db.query(`DELETE FROM users WHERE id = $1`, [id])
+        return deleteOp
     }
 };
 
